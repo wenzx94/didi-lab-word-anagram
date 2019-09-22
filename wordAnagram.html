@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Add React in One Minute</title>
+    <style>
+      .App {
+        text-align: center;
+      }
+
+      .App-logo {
+        height: 40vmin;
+      }
+
+      .App-header {
+        background-color: #282c34;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: calc(10px + 2vmin);
+        color: white;
+      }
+
+      .App-link {
+        color: #09d3ac;
+      }
+
+      .background {
+        background-color: white;
+        width: 100%;
+        height: 100vh;
+      }
+
+      .title {
+        margin-left: 40px;
+      }
+
+      .search-box {
+        display: flex;
+        width: 50%;
+        margin: 40px;
+        margin-bottom: 0;
+      }
+
+      .textbox {
+        width: calc(100% - 64px);
+        outline: none;
+        outline: 0;
+        height: 42px;
+        line-height: 42px;
+        padding: 0 16px;
+        background-color: rgba(255, 255, 255, 0.8);
+        color: #212121;
+        border: 0;
+        border-radius: 8px;
+        border: 1px rgba(0, 0, 0, 0.4) solid;
+        margin: 0 10px;
+        margin-left: 0;
+        font-size: 18px;
+      }
+
+      .button {
+        width: 44px;
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.4);
+        color: white;
+        font-weight: 500;
+        line-height: 44px;
+        text-align: center;
+        cursor: pointer;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        padding: 5px 10px;
+        background-color: #EEEEEE;
+        border: 1px solid #DDDDDD;
+        width: 50%;
+        margin-left: 40px;
+        font-size: 18px;
+      }
+
+      .error {
+        margin-left: 58px;
+        font-size: 14px;
+        color: rgb(206, 44, 44);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- Load React. -->
+    <!-- Note: when deploying, replace "development.js" with "production.min.js". -->
+    <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- Load our React component. -->
+    <script type="text/jsx">
+      const dictUrl = "https://raw.githubusercontent.com/lad/words/master/words";
+
+      function getDict() {
+          return axios({
+              method: "GET",
+              url: dictUrl,
+          })
+      }
+      class App extends React.Component {
+        constructor(props) {
+        super(props);
+        this.state = {
+          dictReady: false,
+          anagrams: [],
+          err: "",
+        }
+        this.dict = [];
+        this.input = React.createRef();
+        this.searchHandler = this.searchHandler.bind(this);
+        this.permutation = this.permutation.bind(this);
+        this.getAnagrams = this.getAnagrams.bind(this);
+      }
+      searchHandler() {
+        if (!this.state.dictReady) {
+          this.setState({
+            err: "Failed to load the dictionary."
+          })
+          return;
+        }
+        const str = this.input.current.value;
+        if (str.length == 0) {
+          this.setState({
+            err: "Your input is empty."
+          })
+          return;
+        }
+        if (!str.match(/^[A-Za-z]+$/)) {
+          this.setState({
+            err: "Please enter a valid string with only characters in a-z, A-Z."
+          })
+          return;
+        }
+        const words = this.getAnagrams(str, this.dict);
+        if (words.length == 0) {
+          this.setState({
+            err: "Cannot find any."
+          })
+          return;
+        }
+        console.log(words);
+        this.setState({
+          anagrams: words,
+          err: ""
+        })
+      }
+      getAnagrams(input, dict) {
+        const letters = [];
+        for (let i = 0; i < 26; i++) {
+          letters[i] = 0;
+        }
+        const str = input.toLowerCase();
+        for (let i = 0; i < str.length; i++) {
+          letters[str.charCodeAt(i) - 'a'.charCodeAt(0)]++;
+        }
+        const words = [];
+        this.permutation([], letters, dict, words, str.length);
+        return words;
+      }
+      permutation(charArr, letters, dict, words, len) {
+        if (charArr.length == len) {
+          const word = charArr.join('');
+          const Word = word.charAt(0).toUpperCase() + word.substring(1);
+          if (dict.indexOf(word) >= 0) {
+            words.push({word: word, index: dict.indexOf(word)});
+          }
+          if (dict.indexOf(Word) >= 0) {
+            words.push({word: Word, index: dict.indexOf(Word)});
+          }
+          return;
+        }
+        for (let i = 0; i < letters.length; i++) {
+          if (letters[i] > 0) {
+            charArr.push(String.fromCharCode('a'.charCodeAt(0) + i));
+            letters[i]--;
+            this.permutation(charArr, letters, dict, words, len);
+            charArr.pop();
+            letters[i]++;
+          }
+        }
+      }
+
+      componentDidMount() {
+        getDict()
+        .then(res => {
+          this.dict = res.data.split("\n");
+          this.setState({
+            dictReady: true
+          })
+        })
+        .catch(err => {
+          alert(err.message)
+        })
+      }
+
+      render() {
+        return (
+          <div className={"background"}>
+          <h1 className={"title"}>Word Anagram</h1>
+          <div className={"search-box"}>
+              <input ref={this.input} type="text" className={"textbox"} placeholder="Search" />
+              <div className={"button"} onClick={this.searchHandler}>Go</div>
+          </div>
+          <div className={"error"}>{this.state.err}</div>
+          <ul>
+            {this.state.anagrams.map(ag => (
+              <li>{ag.word}</li>
+            ))}
+          </ul>
+
+          </div>
+        )
+      }
+      }
+
+      ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+
+  </body>
+</html>
